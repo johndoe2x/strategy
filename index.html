@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Long-Term Strategy • Projection Tool</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { fontFamily: { sans: ['Inter', 'system-ui'] } } };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    .fade-enter{opacity:0;transform:translateY(8px)}
+    .fade-enter-active{opacity:1;transform:translateY(0);transition:.45s ease}
+    .chart-container {
+      position: relative;
+      height: 400px;
+      width: 100%;
+    }
+    .milestone-marker {
+      position: absolute;
+      background-color: rgba(99, 102, 241, 0.2);
+      border-left: 2px dashed rgba(99, 102, 241, 0.8);
+    }
+    .milestone-label {
+      position: absolute;
+      background-color: rgba(99, 102, 241, 0.9);
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      transform: translateX(-50%);
+    }
+  </style>
+</head>
+
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 antialiased">
+  <!-- ====================================================== -->
+  <!--  HEADER                                                -->
+  <!-- ====================================================== -->
+  <header
+    class="sticky top-0 z-20 h-14 flex justify-between items-center px-4
+           shadow-sm bg-white/90 dark:bg-gray-800/90 backdrop-blur
+           border-b border-gray-200 dark:border-gray-700">
+    <h1 class="font-semibold tracking-tight">Long-Term Strategy Projection</h1>
+
+    <button id="themeToggle" class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700">
+      <svg id="sunIcon" class="w-5 h-5 hidden" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 4.5a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V5.25A.75.75 0 0112 4.5zm0 12.75a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5a.75.75 0 01.75-.75zM18.75 11.25a.75.75 0 01.75.75H21a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75.75.75 0 01.75-.75zM3 12a.75.75 0 01.75-.75H5.25a.75.75 0 010 1.5H3.75A.75.75 0 013 12zm12.57-6.57a.75.75 0 011.06 1.06l-1.06 1.06a.75.75 0 11-1.06-1.06l1.06-1.06zM7.43 16.57a.75.75 0 011.06 1.06l-1.06 1.06a.75.75 0 11-1.06-1.06l1.06-1.06zm10.14 0l1.06 1.06a.75.75 0 11-1.06 1.06l-1.06-1.06a.75.75 0 111.06-1.06zM7.43 7.43l1.06-1.06a.75.75 0 10-1.06-1.06L6.37 6.37a.75.75 0 001.06 1.06z"/>
+      </svg>
+      <svg id="moonIcon" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+      </svg>
+    </button>
+  </header>
+
+  <main class="max-w-5xl mx-auto p-6 space-y-12">
+
+    <!-- ============= PARAMETERS ============== -->
+    <section class="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+      <h2 class="text-lg font-semibold mb-6">Parameters</h2>
+      <form id="paramForm" class="grid sm:grid-cols-2 md:grid-cols-3 gap-6"></form>
+
+      <div class="text-center mt-6">
+        <button id="calcBtn" type="button"
+          class="px-8 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-700
+                 text-white font-semibold shadow">
+          Calculate
+        </button>
+      </div>
+    </section>
+
+    <!-- ============= SUMMARY ============== -->
+    <section id="summarySection" class="hidden">
+      <h2 class="text-lg font-semibold mb-4">Key Metrics</h2>
+      <div id="summaryGrid" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+    </section>
+
+    <!-- ============= CHARTS SECTION ============== -->
+    <section id="chartsSection" class="hidden">
+      <h2 class="text-lg font-semibold mb-4">Portfolio Growth Visualization</h2>
+      
+      <div class="grid gap-6">
+        <!-- Yearly Growth Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+          <h3 class="font-medium mb-4">Yearly Portfolio Growth</h3>
+          <div class="chart-container">
+            <canvas id="yearlyChart"></canvas>
+          </div>
+        </div>
+        
+        <!-- Milestone Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+          <h3 class="font-medium mb-4">Portfolio Milestones</h3>
+          <div class="chart-container relative" id="milestoneChartContainer">
+            <canvas id="milestoneChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= MONTHLY TABLE ============== -->
+    <section>
+      <h2 class="text-lg font-semibold mb-4">Monthly Breakdown</h2>
+      <div class="rounded-xl shadow overflow-x-auto">
+        <table class="min-w-full text-sm divide-y divide-gray-200 dark:divide-gray-700">
+          <thead
+            class="sticky top-0 bg-gray-100 dark:bg-gray-700
+                   text-gray-700 dark:text-gray-200">
+            <tr>
+              <th class="px-4 py-3">#</th>
+              <th class="px-4 py-3">Year</th>
+              <th class="px-4 py-3">Month</th>
+              <th class="px-4 py-3">Liquid</th>
+              <th class="px-4 py-3">Option</th>
+              <th class="px-4 py-3">Equity&nbsp;Interest</th>
+              <th class="px-4 py-3">Cum.&nbsp;Equity&nbsp;Int.</th>
+              <th class="px-4 py-3">Equity</th>
+              <th class="px-4 py-3">Total</th>
+            </tr>
+          </thead>
+          <tbody id="tbody" class="divide-y divide-gray-100 dark:divide-gray-700"></tbody>
+        </table>
+      </div>
+      <div id="pagination" class="mt-6 flex justify-center gap-3"></div>
+    </section>
+  </main>
+
+  <!-- ====================================================== -->
+  <!--  SCRIPT                                                -->
+  <!-- ====================================================== -->
+  <script>
+    /* ---------- THEME TOGGLE ---------- */
+    const root=document.documentElement,sun=document.getElementById('sunIcon'),moon=document.getElementById('moonIcon');
+    const setDark=d=>{
+      root.classList.toggle('dark',d);
+      sun.classList.toggle('hidden',!d);
+      moon.classList.toggle('hidden',d);
+      localStorage.theme=d?'dark':'light';
+    };
+    setDark(
+      localStorage.theme
+        ? localStorage.theme==='dark'
+        : window.matchMedia('(prefers-color-scheme:dark)').matches
+    );
+    document.getElementById('themeToggle').onclick=()=>setDark(!root.classList.contains('dark'));
+
+    /* ---------- PARAMETER INPUTS ---------- */
+    const defs=[
+      ['principal','Initial Fund (₹)',10000000],
+      ['liquid','Liquid Return % p.a.',6.24],
+      ['pledge','Pledge %',90],
+      ['option','Option Return % p.a.',8],
+      ['sip','Equity/SIP Return % p.a.',12],
+      ['years','Tenure (Years)',15]
+    ];
+    const form=document.getElementById('paramForm');
+    defs.forEach(([id,label,val])=>{
+      const wrap=document.createElement('div');
+      wrap.className='flex flex-col';
+      wrap.innerHTML=`
+        <label for="${id}" class="text-sm font-medium mb-1">${label}</label>
+        <input id="${id}" type="number" step="any" value="${val}"
+               class="w-full rounded-lg border border-gray-300 dark:border-gray-600
+                      px-3 py-2 bg-white dark:bg-gray-800
+                      focus:ring-indigo-500 focus:border-indigo-500">
+      `;
+      if(id==='liquid'||id==='option'){
+        const hint=document.createElement('p');
+        hint.id=id+'Hint';
+        hint.className='text-xs text-gray-500 dark:text-gray-400 mt-1';
+        wrap.appendChild(hint);
+      }
+      form.appendChild(wrap);
+    });
+    const updateHint=id=>{
+      const v=+document.getElementById(id).value||0;
+      document.getElementById(id+'Hint').textContent=
+        `${v}% / 12 = ${(v/12).toFixed(2)}% per month`;
+    };
+    ['liquid','option'].forEach(id=>{
+      const el=document.getElementById(id);
+      ['focus','input','pointerenter'].forEach(evt=>
+        el.addEventListener(evt,()=>updateHint(id))
+      );
+      updateHint(id);
+    });
+
+    /* ---------- HELPERS ---------- */
+    const INR=n=>`₹${n.toLocaleString('en-IN',{maximumFractionDigits:0})}`;
+    const animate=(el,end)=>{
+      const dur=800,start=performance.now();
+      const step=t=>{
+        const p=Math.min((t-start)/dur,1);
+        el.textContent=INR(Math.round(end*p));
+        if(p<1)requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+
+    /* ---------- CALCULATION ---------- */
+    const PAGE=12;
+    let rows=[],page=1;
+    let yearlyChart, milestoneChart;
+
+    function calculate(){
+      const P=+principal.value||0;
+      const liquidR=(+liquid.value||0)/100/12;
+      const pledgeAmt=P*(+pledge.value||0)/100;
+      const optionR=(+option.value||0)/100/12;
+      const sipR   =(+sip.value||0)/100/12;
+      const months =(+years.value||0)*12;
+
+      rows=[];
+      let equity=0, cumInterest=0;
+
+      for(let m=1;m<=months;m++){
+        const liquidInc = P*liquidR;
+        const optionInc = pledgeAmt*optionR;
+        const interest  = equity*sipR;       // equity growth this month
+        cumInterest    += interest;          // running total
+
+        equity += interest + liquidInc + optionInc;
+
+        rows.push({
+          n:m,
+          year:Math.ceil(m/12),
+          month:((m-1)%12)+1,
+          liquidInc,
+          optionInc,
+          interest,
+          cumInterest,
+          equity,
+          total:P+equity
+        });
+      }
+      page=1;
+      render();
+    }
+
+    /* ---------- CHART FUNCTIONS ---------- */
+    function createYearlyChart() {
+      const ctx = document.getElementById('yearlyChart').getContext('2d');
+      
+      // Group data by year
+      const yearlyData = {};
+      rows.forEach(row => {
+        if (!yearlyData[row.year]) {
+          yearlyData[row.year] = {
+            invested: row.n * (rows[0].liquidInc + rows[0].optionInc),
+            total: row.total
+          };
+        } else {
+          yearlyData[row.year].total = row.total;
+        }
+      });
+      
+      const years = Object.keys(yearlyData).map(Number);
+      const investedValues = years.map(year => yearlyData[year].invested);
+      const totalValues = years.map(year => yearlyData[year].total);
+      
+      if (yearlyChart) yearlyChart.destroy();
+      
+      yearlyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: years.map(y => `Year ${y}`),
+          datasets: [
+            {
+              label: 'Amount Invested',
+              data: investedValues,
+              borderColor: 'rgb(99, 102, 241)',
+              backgroundColor: 'rgba(99, 102, 241, 0.1)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.1
+            },
+            {
+              label: 'Total Portfolio Value',
+              data: totalValues,
+              borderColor: 'rgb(16, 185, 129)',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${INR(context.raw)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              ticks: {
+                callback: function(value) {
+                  return INR(value);
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    function createMilestoneChart() {
+      const ctx = document.getElementById('milestoneChart').getContext('2d');
+      const container = document.getElementById('milestoneChartContainer');
+      
+      // Clear previous milestone markers
+      const existingMarkers = container.querySelectorAll('.milestone-marker, .milestone-label');
+      existingMarkers.forEach(el => el.remove());
+      
+      // Prepare data
+      const months = rows.map(row => row.n);
+      const totals = rows.map(row => row.total);
+      
+      // Find 1 crore milestones
+      const milestones = [];
+      let nextMilestone = 10000000; // Start with 1 crore
+      let milestoneIncrement = 10000000; // 1 crore increments
+      
+      rows.forEach((row, index) => {
+        if (row.total >= nextMilestone) {
+          const croreValue = Math.floor(nextMilestone / 10000000);
+          milestones.push({
+            month: row.n,
+            year: row.year,
+            monthInYear: row.month,
+            value: nextMilestone,
+            label: `${croreValue} Crore`
+          });
+          nextMilestone += milestoneIncrement;
+        }
+      });
+      
+      if (milestoneChart) milestoneChart.destroy();
+      
+      milestoneChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: months,
+          datasets: [{
+            label: 'Portfolio Value',
+            data: totals,
+            borderColor: 'rgb(99, 102, 241)',
+            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `Portfolio Value: ${INR(context.raw)}`;
+                },
+                afterLabel: function(context) {
+                  const month = context.dataIndex + 1;
+                  const year = Math.floor((month-1)/12) + 1;
+                  const monthInYear = ((month-1)%12) + 1;
+                  return `Month ${month} (Year ${year}, Month ${monthInYear})`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Months'
+              }
+            },
+            y: {
+              ticks: {
+                callback: function(value) {
+                  return INR(value);
+                }
+              }
+            }
+          }
+        }
+      });
+      
+      // Add milestone markers after chart is rendered
+      setTimeout(() => {
+        const chartArea = milestoneChart.chartArea;
+        const xScale = milestoneChart.scales.x;
+        const yScale = milestoneChart.scales.y;
+        
+        milestones.forEach(milestone => {
+          // Create vertical marker line
+          const marker = document.createElement('div');
+          marker.className = 'milestone-marker';
+          marker.style.left = `${xScale.getPixelForValue(milestone.month)}px`;
+          marker.style.top = `${chartArea.top}px`;
+          marker.style.height = `${chartArea.bottom - chartArea.top}px`;
+          container.appendChild(marker);
+          
+          // Create label
+          const label = document.createElement('div');
+          label.className = 'milestone-label';
+          label.textContent = `${milestone.label} in Year ${milestone.year}, Month ${milestone.monthInYear}`;
+          label.style.left = `${xScale.getPixelForValue(milestone.month)}px`;
+          label.style.top = `${yScale.getPixelForValue(milestone.value) - 20}px`;
+          container.appendChild(label);
+        });
+      }, 100);
+    }
+
+    /* ---------- RENDERERS ---------- */
+    function buildSummary(P,eq){
+      const grid=document.getElementById('summaryGrid');
+      grid.innerHTML='';
+      const data=[
+        ['Initial',P],
+        ['Equity End',eq],
+        ['Total End',P+eq],
+        ['Months',rows.length]
+      ];
+      data.forEach(([label,value])=>{
+        const card=document.createElement('div');
+        card.className='bg-white dark:bg-gray-800 rounded-xl shadow p-6 fade-enter';
+        card.innerHTML=`
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">${label}</p>
+          <h3 class="text-2xl font-semibold"></h3>`;
+        grid.appendChild(card);
+        requestAnimationFrame(()=>card.classList.add('fade-enter-active'));
+        if(label==='Months'){
+          card.querySelector('h3').textContent=value;
+        }else{
+          animate(card.querySelector('h3'),value);
+        }
+      });
+      document.getElementById('summarySection').classList.remove('hidden');
+    }
+
+    function buildTable(){
+      const body=document.getElementById('tbody');
+      body.innerHTML='';
+      rows
+        .slice((page-1)*PAGE,page*PAGE)
+        .forEach(r=>{
+          const tr=document.createElement('tr');
+          tr.className='hover:bg-indigo-50 dark:hover:bg-indigo-900/40';
+          tr.innerHTML=`
+            <td class="px-4 py-2">${r.n}</td>
+            <td class="px-4 py-2">${r.year}</td>
+            <td class="px-4 py-2">${r.month}</td>
+            <td class="px-4 py-2">${INR(r.liquidInc)}</td>
+            <td class="px-4 py-2">${INR(r.optionInc)}</td>
+            <td class="px-4 py-2">${INR(Math.round(r.interest))}</td>
+            <td class="px-4 py-2">${INR(Math.round(r.cumInterest))}</td>
+            <td class="px-4 py-2">${INR(Math.round(r.equity))}</td>
+            <td class="px-4 py-2 font-semibold">${INR(Math.round(r.total))}</td>`;
+          body.appendChild(tr);
+        });
+    }
+
+    function buildPagination(){
+      const pag=document.getElementById('pagination');
+      pag.innerHTML='';
+      const pages=Math.ceil(rows.length/PAGE)||1;
+      const makeBtn=(txt,p,disabled)=>`
+        <button class="px-3 py-1 rounded
+                       ${disabled
+                         ?'bg-gray-400/40 dark:bg-gray-600 cursor-not-allowed'
+                         :'bg-indigo-600 hover:bg-indigo-700 text-white'}
+                       text-sm"
+                ${disabled?'disabled':''}
+                data-p="${p}">
+          ${txt}
+        </button>`;
+      pag.insertAdjacentHTML('beforeend',makeBtn('Prev',page-1,page===1));
+      for(let i=1;i<=pages;i++){
+        pag.insertAdjacentHTML('beforeend',makeBtn(i,i,i===page));
+      }
+      pag.insertAdjacentHTML('beforeend',makeBtn('Next',page+1,page===pages));
+
+      pag.querySelectorAll('button[data-p]').forEach(btn=>{
+        if(!btn.disabled){
+          btn.onclick=()=>{page=+btn.dataset.p;render()};
+        }
+      });
+    }
+
+    function render(){
+      buildTable();
+      buildPagination();
+      buildSummary(+principal.value||0,rows.at(-1)?.equity||0);
+      
+      if (rows.length > 0) {
+        document.getElementById('chartsSection').classList.remove('hidden');
+        createYearlyChart();
+        createMilestoneChart();
+      } else {
+        document.getElementById('chartsSection').classList.add('hidden');
+      }
+    }
+
+    /* ---------- INIT ---------- */
+    document.getElementById('calcBtn').onclick=calculate;
+    calculate();           // initial render with defaults
+  </script>
+</body>
+</html>
